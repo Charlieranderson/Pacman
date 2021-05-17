@@ -10,10 +10,18 @@ Here is a change
 #include <windows.h>
 
 bool running = true;
-void* bufferMemory;
-int bufferWidth;
-int bufferHeight;
-BITMAPINFO bufferBitmapInfo;
+
+struct RenderState {
+	int height, width;
+	void *memory;
+
+	BITMAPINFO bitmapInfo;
+};
+
+RenderState renderState;
+
+#include "Rend.cpp"
+
 
 LRESULT CALLBACK windowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 	LRESULT result = 0;
@@ -26,20 +34,20 @@ LRESULT CALLBACK windowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	case WM_SIZE: {
 		RECT rect;
 		GetClientRect(hwnd, &rect);
-		bufferWidth = rect.right - rect.left;
-		bufferHeight = rect.bottom - rect.top;
+		renderState.width = rect.right - rect.left;
+		renderState.height = rect.bottom - rect.top;
 
-		int bufferSize = bufferWidth * bufferHeight * sizeof(unsigned int);
+		int bufferSize = renderState.width * renderState.height * sizeof(unsigned int);
 
-		if (bufferMemory) VirtualFree(bufferMemory, 0, MEM_RELEASE);
-		bufferMemory = VirtualAlloc(0, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		if (renderState.memory) VirtualFree(renderState.memory, 0, MEM_RELEASE);
+		renderState.memory = VirtualAlloc(0, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-		bufferBitmapInfo.bmiHeader.biSize = sizeof(bufferBitmapInfo.bmiHeader);
-		bufferBitmapInfo.bmiHeader.biWidth = bufferWidth;
-		bufferBitmapInfo.bmiHeader.biHeight = bufferHeight;
-		bufferBitmapInfo.bmiHeader.biPlanes = 1;
-		bufferBitmapInfo.bmiHeader.biBitCount = 32;
-		bufferBitmapInfo.bmiHeader.biCompression = BI_RGB;
+		renderState.bitmapInfo.bmiHeader.biSize = sizeof(renderState.bitmapInfo.bmiHeader);
+		renderState.bitmapInfo.bmiHeader.biWidth = renderState.width;
+		renderState.bitmapInfo.bmiHeader.biHeight = renderState.height;
+		renderState.bitmapInfo.bmiHeader.biPlanes = 1;
+		renderState.bitmapInfo.bmiHeader.biBitCount = 32;
+		renderState.bitmapInfo.bmiHeader.biCompression = BI_RGB;
 
 	}break;
 
@@ -72,15 +80,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 		}
 
 		//simulate
-		unsigned int* pixel = (unsigned int*)bufferMemory;
-		for (int y = 0; y < bufferHeight; y++) {
-			for (int x = 0; x < bufferWidth; x++) {
-				*pixel++ = x * y;
-			}
-		}
+		RenderBackground();
 
 		//render
-		StretchDIBits(hdc, 0, 0, bufferWidth, bufferHeight, 0, 0, bufferWidth, bufferHeight, bufferMemory, &bufferBitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+		StretchDIBits(hdc, 0, 0, renderState.width, renderState.height, 0, 0, renderState.width, renderState.height, renderState.memory, &renderState.bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
 	}
 
 }
