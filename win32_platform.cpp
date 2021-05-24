@@ -8,8 +8,8 @@ Here is a change
 
 
 #include <windows.h>
-
-bool running = true;
+#include "utils.cpp";
+global_variable bool running = true;
 
 struct RenderState {
 	int height, width;
@@ -18,9 +18,11 @@ struct RenderState {
 	BITMAPINFO bitmapInfo;
 };
 
-RenderState renderState;
+global_variable RenderState renderState;
 
+#include "platform_common.cpp"
 #include "Rend.cpp"
+#include "game.cpp"
 
 
 LRESULT CALLBACK windowCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
@@ -71,19 +73,69 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	//create window
 	HWND window = CreateWindow(windowClass.lpszClassName, "Pacman!", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, 0, 0, hInstance, 0);
 	HDC hdc = GetDC(window);
+
+	Input input = {};
+
+	float deltaTime = 0.0166666f;
+	LARGE_INTEGER frameBeginTime; 
+	QueryPerformanceCounter(&frameBeginTime);
+
+	float performanceFrequency;
+	{
+		LARGE_INTEGER perf;
+		QueryPerformanceFrequency(&perf);
+		performanceFrequency = (float)perf.QuadPart;
+	}
+
 	while (running) {
 		//input
 		MSG message;
+
+		for (int i = 0; i < BUTTONCOUNT; i++) {
+			input.buttons[i].changed = false;
+		}
+
 		while (PeekMessage(&message, window, 0, 0, PM_REMOVE)) {
-			TranslateMessage(&message);
-			DispatchMessage(&message);
+
+			switch (message.message) {
+			case WM_KEYUP:
+			case WM_KEYDOWN: {
+
+
+				u32 vkCode = (u32)message.wParam;
+				bool isDown = ((message.lParam & (1 << 31)) == 0);
+
+#define processButton(b, vk)\
+case vk: {\
+input.buttons[b].isDown = isDown;\
+input.buttons[b].changed = true;\
+} break;
+
+				switch (vkCode) {
+					processButton(BUTTONUP, VK_UP);
+					processButton(BUTTONDOWN, VK_DOWN);
+					processButton(BUTTONLEFT, VK_LEFT);
+					processButton(BUTTONRIGHT, VK_RIGHT);
+				}
+			}break;
+
+			default:
+				TranslateMessage(&message);
+				DispatchMessage(&message);
+			}
 		}
 
 		//simulate
-		RenderBackground();
+		simulateGame(&input, deltaTime);
 
 		//render
 		StretchDIBits(hdc, 0, 0, renderState.width, renderState.height, 0, 0, renderState.width, renderState.height, renderState.memory, &renderState.bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+	
+
+		LARGE_INTEGER frameEndTime;
+		QueryPerformanceCounter(&frameEndTime);
+		deltaTime = (float)(frameEndTime.QuadPart - frameBeginTime.QuadPart) / performanceFrequency;
+		frameBeginTime = frameEndTime;
 	}
 
 }
