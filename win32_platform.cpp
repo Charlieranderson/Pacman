@@ -107,15 +107,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
 #define processButton(b, vk)\
 case vk: {\
+input.buttons[b].changed = isDown != input.buttons[b].isDown;\
 input.buttons[b].isDown = isDown;\
-input.buttons[b].changed = true;\
 } break;
 
 				switch (vkCode) {
 					processButton(BUTTONUP, VK_UP);
 					processButton(BUTTONDOWN, VK_DOWN);
-					processButton(BUTTONLEFT, VK_LEFT);
-					processButton(BUTTONRIGHT, VK_RIGHT);
+					processButton(BUTTON_W, 'W');
+					processButton(BUTTON_S, 'S');
 				}
 			}break;
 
